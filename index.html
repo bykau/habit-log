@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Day Log</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Day Log">
+<meta name="theme-color" content="#FAF9F5">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="%231C2733"/><path d="M28 52 l14 14 30-32" stroke="%23E8E4DA" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'>
+<style>
+  :root {
+    --paper: #FAF9F5;
+    --card: #FFFFFF;
+    --ink: #1C2733;
+    --ink-soft: #5C6670;
+    --hairline: #E3DFD6;
+    --done: #2E7D5B;
+    --done-wash: #EAF3EE;
+    --missed: #B4553B;
+    --missed-wash: #F7ECE8;
+    --skip: #8A8F98;
+    --skip-wash: #EFEFED;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { height: 100%; }
+  body {
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100%;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 18px 40px; }
+
+  /* Header */
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  .brand { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .gear { background: none; border: none; font-size: 18px; color: var(--ink-soft); padding: 6px; cursor: pointer; }
+
+  .datebar { display: flex; align-items: center; justify-content: space-between; margin: 10px 0 4px; }
+  .datebar h1 {
+    font-family: ui-serif, "New York", Georgia, serif;
+    font-size: 28px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  .datebar .sub { color: var(--ink-soft); font-size: 14px; margin-top: 2px; }
+  .nav { display: flex; gap: 6px; }
+  .nav button {
+    width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--hairline);
+    background: var(--card); color: var(--ink); font-size: 18px; cursor: pointer;
+  }
+  .nav button:disabled { opacity: 0.35; }
+
+  /* Day ribbon — one segment per habit */
+  .ribbon { display: flex; gap: 4px; margin: 14px 0 18px; }
+  .ribbon span {
+    flex: 1; height: 5px; border-radius: 3px; background: var(--hairline);
+    transition: background 0.25s ease;
+  }
+  .ribbon span.done { background: var(--done); }
+  .ribbon span.missed { background: var(--missed); }
+  .ribbon span.skipped { background: var(--skip); }
+
+  /* Habit rows */
+  .habit {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    width: 100%; text-align: left;
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 14px;
+    padding: 15px 16px; margin-bottom: 10px; cursor: pointer;
+    font: inherit; color: inherit;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  .habit .name { flex: 1; }
+  .habit .state {
+    flex-shrink: 0; min-width: 74px; text-align: center;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+    padding: 6px 10px; border-radius: 999px;
+    background: var(--paper); color: var(--ink-soft); border: 1px dashed var(--hairline);
+  }
+  .habit.done   { background: var(--done-wash);   border-color: var(--done); }
+  .habit.missed { background: var(--missed-wash); border-color: var(--missed); }
+  .habit.skipped{ background: var(--skip-wash); }
+  .habit.done .state   { background: var(--done);   color: #fff; border: none; }
+  .habit.missed .state { background: var(--missed); color: #fff; border: none; }
+  .habit.skipped .state{ background: var(--skip);   color: #fff; border: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .habit .state { transition: transform 0.15s ease; }
+    .habit:active .state { transform: scale(0.92); }
+  }
+
+  /* Note */
+  textarea {
+    width: 100%; min-height: 64px; resize: vertical;
+    font: inherit; color: inherit;
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 14px;
+    padding: 12px 14px; margin: 8px 0 16px;
+  }
+  textarea::placeholder { color: var(--ink-soft); }
+
+  /* Commit */
+  .commit {
+    width: 100%; padding: 15px; border: none; border-radius: 14px;
+    background: var(--ink); color: var(--paper);
+    font: 600 16px/1 inherit; letter-spacing: 0.02em; cursor: pointer;
+  }
+  .commit:disabled { opacity: 0.5; }
+  .status { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 12px; min-height: 18px; }
+  .status.err { color: var(--missed); }
+
+  /* Settings panel */
+  .panel { margin-top: 8px; }
+  .panel label { display: block; font-size: 13px; color: var(--ink-soft); margin: 14px 0 5px; }
+  .panel input {
+    width: 100%; font: inherit; color: inherit;
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; padding: 12px 14px;
+  }
+  .panel .hint { font-size: 13px; color: var(--ink-soft); margin-top: 16px; line-height: 1.5; }
+  .panel .hint a { color: var(--ink); }
+  .hidden { display: none; }
+  button:focus-visible, .habit:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--ink); outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Day Log</div>
+    <button class="gear" id="gearBtn" aria-label="Settings">&#9881;&#65038;</button>
+  </header>
+
+  <!-- Settings -->
+  <section id="settings" class="panel hidden">
+    <div class="datebar"><h1>Setup</h1></div>
+    <label for="cfgRepo">Repository (owner/name)</label>
+    <input id="cfgRepo" autocapitalize="none" autocorrect="off" placeholder="bykau/personal-improvement">
+    <label for="cfgToken">Fine-grained token</label>
+    <input id="cfgToken" type="password" autocapitalize="none" placeholder="github_pat_…">
+    <div style="margin-top:18px">
+      <button class="commit" id="connectBtn">Connect</button>
+    </div>
+    <p class="hint">
+      Create the token at <a href="https://github.com/settings/personal-access-tokens/new">github.com/settings/personal-access-tokens/new</a>:
+      Repository access → “Only select repositories” → this repo · Permissions → Contents: Read and write.
+      The token stays on this device.
+    </p>
+    <div class="status" id="setupStatus"></div>
+  </section>
+
+  <!-- Main -->
+  <section id="main" class="hidden">
+    <div class="datebar">
+      <div>
+        <h1 id="dateTitle"></h1>
+        <div class="sub" id="dateSub"></div>
+      </div>
+      <div class="nav">
+        <button id="prevBtn" aria-label="Previous day">&#8249;</button>
+        <button id="nextBtn" aria-label="Next day">&#8250;</button>
+      </div>
+    </div>
+    <div class="ribbon" id="ribbon" aria-hidden="true"></div>
+    <div id="habits"></div>
+    <textarea id="note" placeholder="Note for the day (optional)"></textarea>
+    <button class="commit" id="commitBtn">Commit day</button>
+    <div class="status" id="status">&nbsp;</div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const API = 'https://api.github.com';
+  const CYCLE = ['', 'done', 'missed', 'skipped'];
+  const LABELS = { '': 'mark', done: 'done', missed: 'missed', skipped: 'skipped' };
+  const LS_CFG = 'daylog.config', LS_DRAFT = 'daylog.draft.';
+
+  let cfg = null;            // {repo, token}
+  let habits = [];           // [{id, name, active}]
+  let date = today();        // 'YYYY-MM-DD'
+  let marks = {};            // habitId -> status
+  let note = '';
+  let remoteRows = [];       // all parsed rows of habits.csv
+  let noteRows = [];         // all parsed rows of notes.csv
+  let shas = {};             // path -> sha
+  let dirty = false;
+
+  const $ = id => document.getElementById(id);
+
+  function today() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function shiftDate(iso, days) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + days);
+    return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+  }
+  function prettyDate(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('en-US', { weekday: 'long' }) + ', ' +
+           dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  }
+
+  // ---------- CSV ----------
+  function csvEscape(v) {
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function csvParse(text) {
+    const rows = []; let row = [], field = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+        else field += c;
+      } else if (c === '"') q = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c !== '\r') field += c;
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+  function csvSerialize(rows) {
+    return rows.map(r => r.map(csvEscape).join(',')).join('\n') + '\n';
+  }
+
+  // ---------- GitHub ----------
+  function b64encode(str) {
+    return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+  }
+  function b64decode(b64) {
+    return new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), c => c.charCodeAt(0)));
+  }
+  async function ghGet(path) {
+    const res = await fetch(`${API}/repos/${cfg.repo}/contents/${path}?t=${Date.now()}`, {
+      headers: { Authorization: 'Bearer ' + cfg.token, Accept: 'application/vnd.github+json' },
+      cache: 'no-store'
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
+    const j = await res.json();
+    shas[path] = j.sha;
+    return b64decode(j.content);
+  }
+  async function ghPut(path, content, message) {
+    const body = { message, content: b64encode(content) };
+    if (shas[path]) body.sha = shas[path];
+    const res = await fetch(`${API}/repos/${cfg.repo}/contents/${path}`, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + cfg.token, Accept: 'application/vnd.github+json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`PUT ${path}: ${res.status} ${t.slice(0, 120)}`);
+    }
+    const j = await res.json();
+    shas[path] = j.content.sha;
+    return j.commit.sha.slice(0, 7);
+  }
+
+  // ---------- data ----------
+  async function loadAll() {
+    setStatus('Loading…');
+    const [habitsJson, logCsv, notesCsv] = await Promise.all([
+      ghGet('data/habits.json'), ghGet('data/habits.csv'), ghGet('data/notes.csv')
+    ]);
+    if (!habitsJson) throw new Error('data/habits.json not found in repo');
+    habits = JSON.parse(habitsJson).habits.filter(h => h.active !== false);
+    remoteRows = logCsv ? csvParse(logCsv).slice(1) : [];
+    noteRows = notesCsv ? csvParse(notesCsv).slice(1) : [];
+    loadDay();
+    setStatus(' ');
+  }
+  function loadDay() {
+    marks = {}; note = '';
+    for (const r of remoteRows) if (r[0] === date) marks[r[1]] = r[2];
+    for (const r of noteRows) if (r[0] === date) note = r[1];
+    const draft = localStorage.getItem(LS_DRAFT + date);
+    if (draft) {
+      const d = JSON.parse(draft);
+      marks = d.marks; note = d.note;
+      dirty = true;
+    } else dirty = false;
+    render();
+  }
+  function saveDraft() {
+    localStorage.setItem(LS_DRAFT + date, JSON.stringify({ marks, note }));
+    dirty = true;
+  }
+
+  async function commitDay() {
+    const btn = $('commitBtn');
+    btn.disabled = true;
+    setStatus('Saving…');
+    try {
+      // refresh shas/content to avoid clobbering concurrent edits
+      const [logCsv, notesCsv] = await Promise.all([ghGet('data/habits.csv'), ghGet('data/notes.csv')]);
+      remoteRows = logCsv ? csvParse(logCsv).slice(1) : [];
+      noteRows = notesCsv ? csvParse(notesCsv).slice(1) : [];
+
+      const keep = remoteRows.filter(r => r[0] !== date);
+      for (const h of habits) if (marks[h.id]) keep.push([date, h.id, marks[h.id]]);
+      keep.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+      const c1 = await ghPut('data/habits.csv',
+        csvSerialize([['date', 'habit', 'status'], ...keep]), `log: ${date}`);
+
+      let commit = c1;
+      const keepNotes = noteRows.filter(r => r[0] !== date);
+      const hadNote = noteRows.length !== keepNotes.length;
+      if (note.trim()) keepNotes.push([date, note.trim()]);
+      if (note.trim() || hadNote) {
+        keepNotes.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+        commit = await ghPut('data/notes.csv',
+          csvSerialize([['date', 'note'], ...keepNotes]), `note: ${date}`);
+      }
+      remoteRows = keep; noteRows = keepNotes;
+      localStorage.removeItem(LS_DRAFT + date);
+      dirty = false;
+      const t = new Date();
+      setStatus(`Saved ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · commit ${commit}`);
+    } catch (e) {
+      saveDraft();
+      setStatus('Save failed — draft kept on this phone. ' + e.message, true);
+    }
+    btn.disabled = false;
+  }
+
+  // ---------- render ----------
+  function setStatus(msg, err) {
+    const el = $('status');
+    el.textContent = msg;
+    el.className = 'status' + (err ? ' err' : '');
+  }
+  function render() {
+    $('dateTitle').textContent = date === today() ? 'Today' : prettyDate(date);
+    $('dateSub').textContent = date === today() ? prettyDate(date) : date;
+    $('nextBtn').disabled = date >= today();
+    $('note').value = note;
+
+    const ribbon = $('ribbon');
+    ribbon.innerHTML = '';
+    const list = $('habits');
+    list.innerHTML = '';
+    for (const h of habits) {
+      const st = marks[h.id] || '';
+      const seg = document.createElement('span');
+      if (st) seg.className = st;
+      ribbon.appendChild(seg);
+
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'habit' + (st ? ' ' + st : '');
+      row.innerHTML = `<span class="name"></span><span class="state">${LABELS[st]}</span>`;
+      row.querySelector('.name').textContent = h.name;
+      row.addEventListener('click', () => {
+        const next = CYCLE[(CYCLE.indexOf(marks[h.id] || '') + 1) % CYCLE.length];
+        if (next) marks[h.id] = next; else delete marks[h.id];
+        saveDraft();
+        render();
+      });
+      list.appendChild(row);
+    }
+    if (dirty) setStatus('Unsaved changes');
+  }
+
+  // ---------- settings ----------
+  function showSettings(show) {
+    $('settings').classList.toggle('hidden', !show);
+    $('main').classList.toggle('hidden', show);
+    if (show && cfg) { $('cfgRepo').value = cfg.repo; $('cfgToken').value = cfg.token; }
+  }
+  async function connect() {
+    const repo = $('cfgRepo').value.trim() || 'bykau/personal-improvement';
+    const token = $('cfgToken').value.trim();
+    const st = $('setupStatus');
+    if (!token) { st.textContent = 'Token required.'; st.className = 'status err'; return; }
+    st.textContent = 'Checking…'; st.className = 'status';
+    cfg = { repo, token };
+    try {
+      await loadAll();
+      localStorage.setItem(LS_CFG, JSON.stringify(cfg));
+      st.textContent = '';
+      showSettings(false);
+    } catch (e) {
+      st.textContent = e.message; st.className = 'status err';
+      cfg = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
+    }
+  }
+
+  // ---------- init ----------
+  $('gearBtn').addEventListener('click', () => showSettings($('settings').classList.contains('hidden')));
+  $('connectBtn').addEventListener('click', connect);
+  $('prevBtn').addEventListener('click', () => { date = shiftDate(date, -1); loadDay(); });
+  $('nextBtn').addEventListener('click', () => { if (date < today()) { date = shiftDate(date, 1); loadDay(); } });
+  $('note').addEventListener('input', e => { note = e.target.value; saveDraft(); setStatus('Unsaved changes'); });
+  $('commitBtn').addEventListener('click', commitDay);
+
+  cfg = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
+  if (cfg) {
+    showSettings(false);
+    loadAll().catch(e => setStatus(e.message, true));
+  } else {
+    showSettings(true);
+  }
+})();
+</script>
+</body>
+</html>
