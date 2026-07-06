@@ -34,7 +34,7 @@
     padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 18px 40px; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 18px calc(76px + env(safe-area-inset-bottom)); }
 
   /* Header */
   header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
@@ -119,6 +119,62 @@
   }
   .panel .hint { font-size: 13px; color: var(--ink-soft); margin-top: 16px; line-height: 1.5; }
   .panel .hint a { color: var(--ink); }
+  /* Tab bar */
+  .tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    background: var(--card); border-top: 1px solid var(--hairline);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tabrow { max-width: 480px; margin: 0 auto; display: flex; }
+  .tabrow button {
+    flex: 1; background: none; border: none; padding: 14px 0 12px;
+    font: 600 13px/1 inherit; letter-spacing: 0.04em;
+    color: var(--ink-soft); cursor: pointer;
+  }
+  .tabrow button.active { color: var(--ink); }
+
+  /* Progress */
+  .statrow { display: flex; gap: 10px; margin: 14px 0 18px; }
+  .statcard {
+    flex: 1; background: var(--card); border: 1px solid var(--hairline); border-radius: 14px;
+    padding: 12px 10px 10px; text-align: center;
+  }
+  .statcard .num { font-family: ui-serif, "New York", Georgia, serif; font-size: 24px; font-weight: 600; }
+  .statcard .lbl { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .phabit {
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 14px;
+    padding: 12px 16px 13px; margin-bottom: 10px;
+  }
+  .phabit .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .phabit .name { flex: 1; font-size: 14px; }
+  .phabit .meta { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
+  .cells { display: flex; gap: 3px; }
+  .cells span { flex: 1; max-width: 14px; height: 14px; border-radius: 4px; background: var(--paper); border: 1px solid var(--hairline); }
+  .cells span.done    { background: var(--done);   border-color: var(--done); }
+  .cells span.missed  { background: var(--missed); border-color: var(--missed); }
+  .cells span.skipped { background: var(--skip);   border-color: var(--skip); }
+  .heatcap { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); margin: 2px 2px 14px; }
+  .empty { color: var(--ink-soft); font-size: 14px; text-align: center; margin-top: 28px; }
+
+  /* Plan */
+  .weekcard {
+    background: var(--card); border: 1.5px solid var(--ink); border-radius: 14px;
+    padding: 14px 16px; margin: 14px 0 6px; font-size: 15px;
+  }
+  .weekcard .wk { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 3px; }
+  .weekcard .next { margin-top: 12px; }
+  .md h2 { font-family: ui-serif, "New York", Georgia, serif; font-size: 21px; font-weight: 600; margin: 26px 0 8px; }
+  .md h3 { font-size: 16px; margin: 20px 0 6px; }
+  .md h4 { font-size: 15px; margin: 16px 0 4px; }
+  .md p { margin: 8px 0; font-size: 15px; }
+  .md ul { margin: 8px 0 8px 20px; font-size: 15px; }
+  .md li { margin: 5px 0; }
+  .md .wl { border-bottom: 1px dotted var(--ink-soft); }
+  .md .tblwrap { overflow-x: auto; margin: 10px -18px; padding: 0 18px; }
+  .md table { border-collapse: collapse; font-size: 14px; }
+  .md th, .md td { border: 1px solid var(--hairline); padding: 6px 10px; text-align: left; vertical-align: top; min-width: 44px; }
+  .md th { background: var(--card); white-space: nowrap; }
+
   .hidden { display: none; }
   button:focus-visible, .habit:focus-visible, input:focus-visible, textarea:focus-visible {
     outline: 2px solid var(--ink); outline-offset: 2px;
@@ -168,7 +224,28 @@
     <button class="commit" id="commitBtn">Commit day</button>
     <div class="status" id="status">&nbsp;</div>
   </section>
+
+  <!-- Progress -->
+  <section id="progress" class="hidden">
+    <div class="datebar"><h1>Progress</h1></div>
+    <div id="progressBody"></div>
+  </section>
+
+  <!-- Plan -->
+  <section id="plan" class="hidden">
+    <div class="datebar"><h1>Plan</h1></div>
+    <div class="status" id="planStatus"></div>
+    <div id="planBody" class="md"></div>
+  </section>
 </div>
+
+<nav class="tabbar">
+  <div class="tabrow">
+    <button type="button" data-tab="main" class="active">Today</button>
+    <button type="button" data-tab="progress">Progress</button>
+    <button type="button" data-tab="plan">Plan</button>
+  </div>
+</nav>
 
 <script>
 (function () {
@@ -369,11 +446,246 @@
     if (dirty) setStatus('Unsaved changes');
   }
 
+  // ---------- progress ----------
+  function shortDate(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  function renderProgress() {
+    const body = $('progressBody');
+    body.innerHTML = '';
+    if (!habits.length || !remoteRows.length) {
+      body.innerHTML = `<p class="empty">${habits.length ? 'No days logged yet.' : 'Data not loaded — check connection in settings.'}</p>`;
+      return;
+    }
+    // index: habitId -> (date -> status), plus first logged date
+    const idx = new Map();
+    let first = today();
+    for (const r of remoteRows) {
+      if (!idx.has(r[1])) idx.set(r[1], new Map());
+      idx.get(r[1]).set(r[0], r[2]);
+      if (r[0] < first) first = r[0];
+    }
+    const days = [];
+    for (let d = first; d <= today(); d = shiftDate(d, 1)) days.push(d);
+    const shown = days.slice(-28);
+
+    // adherence = done / (done + missed); skipped and unlogged excluded
+    const rate = (habitId, lastN) => {
+      const from = lastN ? shiftDate(today(), -(lastN - 1)) : '';
+      let done = 0, missed = 0;
+      for (const r of remoteRows) {
+        if (r[0] < from || (habitId && r[1] !== habitId)) continue;
+        if (r[2] === 'done') done++; else if (r[2] === 'missed') missed++;
+      }
+      return done + missed ? Math.round(100 * done / (done + missed)) + '%' : '—';
+    };
+    const streak = habitId => {
+      const m = idx.get(habitId) || new Map();
+      let d = today(), n = 0;
+      if (!m.has(d)) d = shiftDate(d, -1); // today not logged yet — start from yesterday
+      for (; d >= first; d = shiftDate(d, -1)) {
+        const st = m.get(d);
+        if (st === 'done') n++;
+        else if (st !== 'skipped') break; // skipped days pass through; missed/unlogged break
+      }
+      return n;
+    };
+
+    const stats = document.createElement('div');
+    stats.className = 'statrow';
+    for (const [lbl, n] of [['7 days', 7], ['30 days', 30], ['overall', 0]]) {
+      const c = document.createElement('div');
+      c.className = 'statcard';
+      c.innerHTML = '<div class="num"></div><div class="lbl"></div>';
+      c.querySelector('.num').textContent = rate(null, n);
+      c.querySelector('.lbl').textContent = lbl;
+      stats.appendChild(c);
+    }
+    body.appendChild(stats);
+
+    for (const h of habits) {
+      const m = idx.get(h.id) || new Map();
+      const card = document.createElement('div');
+      card.className = 'phabit';
+      const top = document.createElement('div');
+      top.className = 'top';
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = h.name;
+      const meta = document.createElement('span');
+      meta.className = 'meta';
+      const s = streak(h.id);
+      meta.textContent = (s ? s + '-day streak' : 'no streak') + ' · ' + rate(h.id, 7) + ' 7d';
+      top.append(name, meta);
+      const cells = document.createElement('div');
+      cells.className = 'cells';
+      for (const d of shown) {
+        const cell = document.createElement('span');
+        const st = m.get(d);
+        if (st) cell.className = st;
+        cell.title = d + (st ? ' — ' + st : '');
+        cells.appendChild(cell);
+      }
+      card.append(top, cells);
+      body.appendChild(card);
+    }
+    const cap = document.createElement('div');
+    cap.className = 'heatcap';
+    cap.innerHTML = '<span></span><span></span>';
+    cap.children[0].textContent = shortDate(shown[0]);
+    cap.children[1].textContent = shortDate(shown[shown.length - 1]);
+    body.appendChild(cap);
+  }
+
+  // ---------- markdown (minimal: headings, lists, tables, bold, wikilinks) ----------
+  function escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function stripFrontmatter(t) {
+    if (!t.startsWith('---')) return t;
+    const end = t.indexOf('\n---', 3);
+    if (end === -1) return t;
+    return t.slice(t.indexOf('\n', end + 1) + 1);
+  }
+  function mdInline(s) {
+    return escHtml(s)
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[\[([^\]]+)\]\]/g, '<span class="wl">$1</span>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+  }
+  function mdRender(text) {
+    const out = [];
+    let list = null, table = null;
+    const flushList = () => { if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; } };
+    const flushTable = () => {
+      if (table) {
+        out.push('<div class="tblwrap"><table>' + table.map((cells, i) =>
+          '<tr>' + cells.map(c => i === 0 ? `<th>${mdInline(c)}</th>` : `<td>${mdInline(c)}</td>`).join('') + '</tr>'
+        ).join('') + '</table></div>');
+        table = null;
+      }
+    };
+    for (const raw of stripFrontmatter(text).split('\n')) {
+      const line = raw.trim();
+      const h = line.match(/^(#{1,4})\s+(.*)/);
+      if (h) {
+        flushList(); flushTable();
+        const lvl = Math.min(h[1].length + 1, 5); // demote: page h1 -> h2
+        out.push(`<h${lvl}>${mdInline(h[2])}</h${lvl}>`);
+      } else if (/^-\s+/.test(line)) {
+        flushTable();
+        (list = list || []).push('<li>' + mdInline(line.replace(/^-\s+/, '')) + '</li>');
+      } else if (/^\|.*\|$/.test(line)) {
+        flushList();
+        if (/^[|\s:-]+$/.test(line)) continue; // separator row
+        (table = table || []).push(line.slice(1, -1).split('|').map(c => c.trim()));
+      } else if (line) {
+        flushList(); flushTable();
+        out.push('<p>' + mdInline(line) + '</p>');
+      } else {
+        flushList(); flushTable();
+      }
+    }
+    flushList(); flushTable();
+    return out.join('');
+  }
+
+  // ---------- plan ----------
+  const LS_PLAN = 'daylog.plancache';
+  const PLAN_PAGES = [
+    { path: 'wiki/status/current-status.md', title: 'Current status' },
+    { path: 'wiki/protocol/rollout-plan.md', title: 'Rollout plan' }
+  ];
+  const PLAN_TTL = 15 * 60 * 1000;
+  let planAt = 0; // last successful fetch (this session)
+
+  function weekCard(statusMd, rolloutMd) {
+    // Best-effort extraction; any miss -> no card, full pages still render below.
+    if (!statusMd || !rolloutMd) return '';
+    const wk = statusMd.match(/\bWeek\s+(\d+)\b/);
+    if (!wk) return '';
+    const n = Number(wk[1]);
+    const focus = key => {
+      const r = rolloutMd.match(new RegExp('^\\|\\s*' + key + '\\s*\\|(.*)\\|\\s*$', 'm'));
+      return r ? r[1].trim() : null;
+    };
+    const thisWk = focus(n);
+    if (!thisWk) return '';
+    const nextKey = focus(n + 1) !== null ? String(n + 1) : 'Steady state';
+    const nextWk = focus(n + 1) !== null ? focus(n + 1) : focus('Steady state');
+    let html = `<div class="weekcard"><div class="wk">This week — Week ${n}</div><div>${mdInline(thisWk)}</div>`;
+    if (nextWk) html += `<div class="next"><div class="wk">Next — ${nextKey === 'Steady state' ? 'Steady state' : 'Week ' + nextKey}</div><div>${mdInline(nextWk)}</div></div>`;
+    return html + '</div>';
+  }
+
+  function renderPlan(texts) {
+    const parts = [weekCard(texts[0], texts[1])];
+    PLAN_PAGES.forEach((p, i) => {
+      parts.push(texts[i] == null
+        ? `<p class="empty">Couldn’t load ${p.path}</p>`
+        : mdRender(texts[i]));
+    });
+    $('planBody').innerHTML = parts.join('');
+  }
+
+  function planStatus(msg, withRetry) {
+    const st = $('planStatus');
+    st.textContent = msg;
+    if (withRetry) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = 'Retry';
+      b.style.cssText = 'margin-left:8px;font:inherit;color:var(--ink);background:none;border:none;text-decoration:underline;cursor:pointer';
+      b.addEventListener('click', () => openPlan(true));
+      st.appendChild(b);
+    }
+  }
+
+  async function openPlan(force) {
+    if (!cfg) { $('planBody').innerHTML = '<p class="empty">Connect in settings first.</p>'; return; }
+    if (!force && planAt && Date.now() - planAt < PLAN_TTL) return; // fresh enough
+    planStatus('Loading…');
+    const texts = await Promise.all(PLAN_PAGES.map(p => ghGet(p.path).catch(() => null)));
+    if (texts.every(t => t == null)) {
+      const cached = JSON.parse(localStorage.getItem(LS_PLAN) || 'null');
+      if (cached) {
+        renderPlan(cached.texts);
+        const t = new Date(cached.at);
+        planStatus(`Offline — plan cached ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}.`, true);
+      } else {
+        planStatus('Couldn’t load the plan.', true);
+      }
+      return;
+    }
+    planAt = Date.now();
+    localStorage.setItem(LS_PLAN, JSON.stringify({ texts, at: planAt }));
+    renderPlan(texts);
+    planStatus('');
+  }
+
+  // ---------- tabs ----------
+  const TABS = ['main', 'progress', 'plan'];
+  let tab = 'main';
+  function showTab(name) {
+    tab = name;
+    $('settings').classList.add('hidden');
+    for (const t of TABS) $(t).classList.toggle('hidden', t !== name);
+    document.querySelectorAll('.tabrow button').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === name));
+    if (name === 'progress') renderProgress();
+    if (name === 'plan') openPlan();
+  }
+
   // ---------- settings ----------
   function showSettings(show) {
     $('settings').classList.toggle('hidden', !show);
-    $('main').classList.toggle('hidden', show);
-    if (show && cfg) { $('cfgRepo').value = cfg.repo; $('cfgToken').value = cfg.token; }
+    if (show) {
+      for (const t of TABS) $(t).classList.add('hidden');
+      if (cfg) { $('cfgRepo').value = cfg.repo; $('cfgToken').value = cfg.token; }
+    } else {
+      showTab(tab);
+    }
   }
   async function connect() {
     const repo = $('cfgRepo').value.trim() || 'bykau/personal-improvement';
@@ -395,6 +707,8 @@
 
   // ---------- init ----------
   $('gearBtn').addEventListener('click', () => showSettings($('settings').classList.contains('hidden')));
+  document.querySelectorAll('.tabrow button').forEach(b =>
+    b.addEventListener('click', () => showTab(b.dataset.tab)));
   $('connectBtn').addEventListener('click', connect);
   $('prevBtn').addEventListener('click', () => { date = shiftDate(date, -1); loadDay(); });
   $('nextBtn').addEventListener('click', () => { if (date < today()) { date = shiftDate(date, 1); loadDay(); } });
