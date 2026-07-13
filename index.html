@@ -21,6 +21,8 @@
     --done-wash: #EAF3EE;
     --missed: #B4553B;
     --missed-wash: #F7ECE8;
+    --watch: #B07C2E;
+    --watch-wash: #F6EFE2;
     --skip: #8A8F98;
     --skip-wash: #EFEFED;
   }
@@ -175,6 +177,56 @@
   .md th, .md td { border: 1px solid var(--hairline); padding: 6px 10px; text-align: left; vertical-align: top; min-width: 44px; }
   .md th { background: var(--card); white-space: nowrap; }
 
+  /* Meals */
+  .sumline { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin: 12px 0 16px; font-variant-numeric: tabular-nums; }
+  .sumline .kcal { font-family: ui-serif, "New York", Georgia, serif; font-size: 40px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+  .sumline .unit { font-size: 14px; color: var(--ink-soft); }
+  .sumline .unit b { color: var(--ink); font-weight: 600; }
+  .sumline .sep { color: var(--hairline); }
+  .mcard { background: var(--card); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 14px 12px; margin-bottom: 12px; }
+  .mtitle { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .mtitle h3 { font-size: 12px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
+  .mtitle .why { font-size: 11px; color: var(--skip); }
+  .strip { padding: 9px 0 7px; border-bottom: 1px solid var(--hairline); }
+  .strip:last-child { border-bottom: 0; padding-bottom: 3px; }
+  .strip .top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+  .strip .name { font-size: 14px; font-weight: 600; }
+  .strip .name small { font-size: 11px; font-weight: 500; color: var(--skip); margin-left: 6px; letter-spacing: 0.03em; }
+  .strip .val { font-family: ui-serif, "New York", Georgia, serif; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .strip .val small { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; color: var(--ink-soft); font-weight: 400; }
+  .band { position: relative; height: 12px; display: flex; }
+  .band .zone { height: 100%; }
+  .band .zone:first-child { border-radius: 6px 0 0 6px; }
+  .band .zone:last-child { border-radius: 0 6px 6px 0; }
+  .band .z-good { background: var(--done-wash); }
+  .band .z-watch { background: var(--watch-wash); }
+  .band .z-over { background: var(--missed-wash); }
+  .band .capmark { position: absolute; top: -2px; bottom: -2px; width: 1px; background: #D8D3C8; }
+  .band .tick { position: absolute; top: -3px; width: 3px; height: 18px; border-radius: 2px; transform: translateX(-50%); }
+  .tick.good { background: var(--done); }
+  .tick.watch { background: var(--watch); }
+  .tick.over { background: var(--missed); }
+  .strip .capnote { font-size: 11.5px; color: var(--skip); margin-top: 6px; }
+  .meal-row { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--hairline); font-size: 13.5px; align-items: baseline; }
+  .meal-row:last-child { border-bottom: 0; }
+  .meal-row .t { color: var(--skip); font-variant-numeric: tabular-nums; flex: 0 0 40px; font-size: 12.5px; }
+  .meal-row .what { flex: 1; }
+  .meal-row .kc { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: 12.5px; }
+  .res { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .res.reg { background: var(--done); }
+  .res.rec { background: linear-gradient(90deg, var(--done) 50%, var(--done-wash) 50%); border: 1px solid var(--done); width: 7px; height: 7px; }
+  .res.est { background: transparent; border: 1.5px solid var(--skip); width: 6px; height: 6px; }
+  .mlegend { display: flex; gap: 14px; margin-top: 9px; font-size: 11px; color: var(--skip); }
+  .mlegend span { display: flex; align-items: center; gap: 5px; }
+  .spark-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--hairline); }
+  .spark-row:last-child { border-bottom: 0; }
+  .spark-row .lbl { flex: 0 0 76px; font-size: 12.5px; color: var(--ink-soft); }
+  .spark-row svg { flex: 1; height: 30px; display: block; min-width: 0; }
+  .spark-row .now { flex: 0 0 74px; text-align: right; font-family: ui-serif, "New York", Georgia, serif; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .spark-row .now small { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 10.5px; color: var(--skip); font-weight: 400; display: block; }
+  .capline { text-align: center; font-size: 11.5px; color: var(--skip); margin: 2px 0 8px; }
+  .capline b { color: var(--ink-soft); }
+
   .hidden { display: none; }
   button:focus-visible, .habit:focus-visible, input:focus-visible, textarea:focus-visible {
     outline: 2px solid var(--ink); outline-offset: 2px;
@@ -231,6 +283,18 @@
     <div id="progressBody"></div>
   </section>
 
+  <!-- Meals -->
+  <section id="meals" class="hidden">
+    <div class="datebar">
+      <div>
+        <h1>Meals</h1>
+        <div class="sub" id="mealsSub"></div>
+      </div>
+    </div>
+    <div class="status" id="mealsStatus"></div>
+    <div id="mealsBody"></div>
+  </section>
+
   <!-- Plan -->
   <section id="plan" class="hidden">
     <div class="datebar"><h1>Plan</h1></div>
@@ -243,6 +307,7 @@
   <div class="tabrow">
     <button type="button" data-tab="main" class="active">Today</button>
     <button type="button" data-tab="progress">Progress</button>
+    <button type="button" data-tab="meals">Meals</button>
     <button type="button" data-tab="plan">Plan</button>
   </div>
 </nav>
@@ -664,8 +729,181 @@
     planStatus('');
   }
 
+  // ---------- meals ----------
+  const LS_MEALS = 'daylog.mealscache';
+  const MEALS_TTL = 5 * 60 * 1000;
+  const BUDGETS = { sat_fat_g: 13, free_sugar_g: 25, fiber_g: 30 }; // overridable via nutrition-daily.json "budgets"
+  let mealsAt = 0;
+
+  function parseMealLog(md, iso) {
+    const out = [];
+    for (const line of (md || '').split('\n')) {
+      const m = line.match(/^-\s+(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})\s*\|\s*[^|]*\|\s*(.*)$/);
+      if (m && m[1] === iso) out.push({ time: m[2], desc: m[3].trim() });
+    }
+    return out;
+  }
+  function median(a) {
+    const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+
+  // Budget strip: a value tick on a zoned band, same grammar as a lab-report reference range.
+  // dir 'max' = stay under budget (cap at 52% of band); dir 'min' = reach budget (cap at 60%).
+  function stripHtml(label, link, val, budget, dir, note) {
+    const scale = dir === 'min' ? budget / 0.60 : budget / 0.52;
+    const raw = 100 * (val || 0) / scale;
+    const pos = Math.min(97, Math.max(2, raw));
+    const zones = dir === 'min'
+      ? '<div class="zone z-over" style="width:36%"></div><div class="zone z-watch" style="width:24%"></div><div class="zone z-good" style="width:40%"></div>'
+      : '<div class="zone z-good" style="width:52%"></div><div class="zone z-watch" style="width:28%"></div><div class="zone z-over" style="width:20%"></div>';
+    const st = dir === 'min'
+      ? (raw >= 60 ? 'good' : raw >= 36 ? 'watch' : 'over')
+      : (raw <= 52 ? 'good' : raw <= 80 ? 'watch' : 'over');
+    return `<div class="strip">
+      <div class="top"><span class="name">${label} <small>${link}</small></span>
+      <span class="val">${val ?? '—'} <small>of ${budget} g</small></span></div>
+      <div class="band">${zones}<div class="capmark" style="left:${dir === 'min' ? 60 : 52}%"></div><div class="tick ${st}" style="left:${pos}%"></div></div>
+      ${note ? `<div class="capnote">${escHtml(note)}</div>` : ''}
+    </div>`;
+  }
+
+  function sparkSvg(vals, budget, dir) {
+    const pts = vals.map((v, i) => v == null ? null : { x: 6 + i * 31.3, v });
+    const nums = vals.filter(v => v != null);
+    if (!nums.length) return '<svg viewBox="0 0 200 30" preserveAspectRatio="none" aria-hidden="true"></svg>';
+    let lo = Math.min(...nums), hi = Math.max(...nums);
+    if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+    const y = v => 26 - 20 * (v - lo) / (hi - lo);
+    let out = '', run = [];
+    const flush = () => {
+      if (run.length > 1) out += `<polyline points="${run.join(' ')}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      run = [];
+    };
+    for (const p of pts) { if (p) run.push(p.x.toFixed(1) + ',' + y(p.v).toFixed(1)); else flush(); }
+    flush();
+    let last = null;
+    for (const p of pts) if (p) last = p;
+    for (const p of pts) if (p && p !== last) out += `<circle cx="${p.x.toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2" fill="var(--ink)"/>`;
+    const col = budget == null ? 'var(--ink)'
+      : dir === 'min'
+        ? (last.v >= budget ? 'var(--done)' : last.v >= 0.6 * budget ? 'var(--watch)' : 'var(--missed)')
+        : (last.v <= budget ? 'var(--done)' : last.v <= 1.5 * budget ? 'var(--watch)' : 'var(--missed)');
+    out += `<circle cx="${last.x.toFixed(1)}" cy="${y(last.v).toFixed(1)}" r="3" fill="${col}"/>`;
+    return `<svg viewBox="0 0 200 30" preserveAspectRatio="none" aria-hidden="true">${out}</svg>`;
+  }
+
+  function renderMeals(nutri, mealMd) {
+    const iso = today();
+    const log = parseMealLog(mealMd, iso);
+    const budgets = Object.assign({}, BUDGETS, (nutri && nutri.budgets) || {});
+    const day = nutri && Array.isArray(nutri.days) ? nutri.days.find(d => d.date === iso) : null;
+    const t = (day && day.totals) || {};
+
+    $('mealsSub').textContent = prettyDate(iso) + (log.length ? ' · through ' + log[log.length - 1].time : ' · nothing logged yet');
+    const parts = [];
+
+    if (day) {
+      parts.push(`<div class="sumline"><span class="kcal">${(t.kcal || 0).toLocaleString('en-US')}</span><span class="unit">kcal${day.partial ? ' so far' : ''}</span><span class="sep">·</span><span class="unit"><b>${t.protein_g ?? '—'} g</b> protein</span><span class="sep">·</span><span class="unit"><b>${log.length}</b> entries</span></div>`);
+    } else if (log.length) {
+      parts.push(`<div class="sumline"><span class="kcal">${log.length}</span><span class="unit">entr${log.length === 1 ? 'y' : 'ies'} logged — analysis pending</span></div>`);
+    }
+
+    if (day) {
+      const n = day.notes || {};
+      parts.push('<div class="mcard"><div class="mtitle"><h3>Watch markers</h3><span class="why">daily budgets</span></div>'
+        + stripHtml('Saturated fat', '→ ApoB / LDL', t.sat_fat_g, budgets.sat_fat_g, 'max', n.sat_fat)
+        + stripHtml('Free sugar', '→ A1c', t.free_sugar_g, budgets.free_sugar_g, 'max', n.free_sugar)
+        + stripHtml('Fiber', '→ viscous-fiber lever', t.fiber_g, budgets.fiber_g, 'min', n.fiber)
+        + '</div>');
+    } else {
+      parts.push('<div class="mcard"><div class="mtitle"><h3>Watch markers</h3></div><p class="empty" style="margin:10px 0">No analysis for today yet — strips fill in after the next review pass.</p></div>');
+    }
+
+    if (log.length) {
+      const pool = day && Array.isArray(day.meals) ? day.meals.slice() : [];
+      const rows = log.map(e => {
+        const i = pool.findIndex(m => m.time === e.time);
+        const m = i >= 0 ? pool.splice(i, 1)[0] : null;
+        return `<div class="meal-row"><span class="t">${e.time.replace(/^0/, '')}</span><span class="what"><span class="res ${m ? m.res : 'est'}"></span>${escHtml(e.desc)}</span><span class="kc">${m ? m.kcal : '—'}</span></div>`;
+      }).join('');
+      parts.push(`<div class="mcard"><div class="mtitle"><h3>Today’s plate</h3><span class="why">kcal · from meal-log.md</span></div>${rows}<div class="mlegend"><span><span class="res reg"></span>label</span><span><span class="res rec"></span>recipe</span><span><span class="res est"></span>estimated</span></div></div>`);
+    } else {
+      parts.push('<div class="mcard"><p class="empty" style="margin:10px 0">Nothing logged today — say “Hey Siri, Kiwi”.</p></div>');
+    }
+
+    if (nutri && Array.isArray(nutri.days) && nutri.days.length) {
+      const byDate = new Map(nutri.days.map(d => [d.date, d.totals || {}]));
+      const win = [];
+      for (let i = 6; i >= 0; i--) win.push(shiftDate(iso, -i));
+      const sparks = [
+        { lbl: 'Calories', key: 'kcal', budget: null, dir: 'max' },
+        { lbl: 'Sat fat', key: 'sat_fat_g', budget: budgets.sat_fat_g, dir: 'max' },
+        { lbl: 'Free sugar', key: 'free_sugar_g', budget: budgets.free_sugar_g, dir: 'max' },
+        { lbl: 'Fiber', key: 'fiber_g', budget: budgets.fiber_g, dir: 'min' }
+      ];
+      const rows = sparks.map(s => {
+        const vals = win.map(d => byDate.has(d) && byDate.get(d)[s.key] != null ? byDate.get(d)[s.key] : null);
+        const nums = vals.filter(v => v != null);
+        const nowV = vals[6];
+        const fmt = v => s.key === 'kcal' ? Math.round(v).toLocaleString('en-US') : Math.round(v * 10) / 10 + ' g';
+        const nowTxt = nowV == null ? '—' : fmt(nowV);
+        const sub = nums.length >= 3 ? '7-d median ' + fmt(median(nums)) : (day && day.partial ? 'partial day' : '');
+        return `<div class="spark-row"><span class="lbl">${s.lbl}</span>${sparkSvg(vals, s.budget, s.dir)}<span class="now">${nowTxt}<small>${sub}</small></span></div>`;
+      }).join('');
+      parts.push(`<div class="mcard"><div class="mtitle"><h3>Last 7 days</h3><span class="why">analyzed days</span></div>${rows}</div>`);
+    }
+
+    if (day && day.capture) {
+      const c = day.capture;
+      parts.push(`<div class="capline">Capture quality: <b>${c.weighed} of ${c.entries}</b> weighed · <b>${c.label_exact}</b> label-exact · <b>${c.recipe}</b> recipe</div>`);
+    }
+    $('mealsBody').innerHTML = parts.join('');
+  }
+
+  function renderMealsSafe(nutriTxt, mealMd) {
+    let nutri = null;
+    try { nutri = nutriTxt ? JSON.parse(nutriTxt) : null; } catch (e) { /* malformed analysis file — render log only */ }
+    renderMeals(nutri, mealMd);
+  }
+  function mealsStatus(msg, withRetry) {
+    const st = $('mealsStatus');
+    st.textContent = msg;
+    if (withRetry) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = 'Retry';
+      b.style.cssText = 'margin-left:8px;font:inherit;color:var(--ink);background:none;border:none;text-decoration:underline;cursor:pointer';
+      b.addEventListener('click', () => openMeals(true));
+      st.appendChild(b);
+    }
+  }
+  async function openMeals(force) {
+    if (!cfg) { $('mealsBody').innerHTML = '<p class="empty">Connect in settings first.</p>'; return; }
+    if (!force && mealsAt && Date.now() - mealsAt < MEALS_TTL) return;
+    mealsStatus('Loading…');
+    const [nutriTxt, mealMd] = await Promise.all([
+      ghGet('data/nutrition-daily.json').catch(() => null),
+      ghGet('data/meal-log.md').catch(() => null)
+    ]);
+    if (nutriTxt == null && mealMd == null) {
+      const cached = JSON.parse(localStorage.getItem(LS_MEALS) || 'null');
+      if (cached) {
+        renderMealsSafe(cached.nutriTxt, cached.mealMd);
+        mealsStatus('Offline — showing cached data.', true);
+      } else {
+        mealsStatus('Couldn’t load meal data.', true);
+      }
+      return;
+    }
+    mealsAt = Date.now();
+    localStorage.setItem(LS_MEALS, JSON.stringify({ nutriTxt, mealMd, at: mealsAt }));
+    renderMealsSafe(nutriTxt, mealMd);
+    mealsStatus('');
+  }
+
   // ---------- tabs ----------
-  const TABS = ['main', 'progress', 'plan'];
+  const TABS = ['main', 'progress', 'meals', 'plan'];
   let tab = 'main';
   function showTab(name) {
     tab = name;
@@ -674,6 +912,7 @@
     document.querySelectorAll('.tabrow button').forEach(b =>
       b.classList.toggle('active', b.dataset.tab === name));
     if (name === 'progress') renderProgress();
+    if (name === 'meals') openMeals();
     if (name === 'plan') openPlan();
   }
 
