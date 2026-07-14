@@ -227,6 +227,28 @@
   .capline { text-align: center; font-size: 11.5px; color: var(--skip); margin: 2px 0 8px; }
   .capline b { color: var(--ink-soft); }
 
+  /* Depth (deep stretches) */
+  .depthcard { background: var(--card); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 16px 12px; margin: 4px 0 8px; }
+  .stretch-row { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; }
+  .stretch-row .t { color: var(--skip); font-variant-numeric: tabular-nums; flex: 0 0 44px; font-size: 12.5px; }
+  .stretch-row .min { flex: 1; font-variant-numeric: tabular-nums; }
+  .stretch-row .del { background: none; border: none; color: var(--skip); font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1; }
+  .chips { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .chip {
+    border: 1px solid var(--hairline); background: var(--paper); color: var(--ink);
+    border-radius: 999px; padding: 9px 13px; font: 600 14px/1 inherit; cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip:active { background: var(--done-wash); border-color: var(--done); }
+  .chips input {
+    width: 60px; font: inherit; color: inherit; text-align: center;
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 999px; padding: 8px 10px;
+  }
+  .chips input::placeholder { color: var(--skip); }
+  .depthbars { display: flex; align-items: flex-end; gap: 3px; height: 56px; margin-top: 10px; }
+  .depthbars .bar { flex: 1; border-radius: 3px 3px 0 0; background: var(--done); min-height: 2px; }
+  .depthbars .bar.none { background: var(--hairline); height: 2px; }
+
   .hidden { display: none; }
   button:focus-visible, .habit:focus-visible, input:focus-visible, textarea:focus-visible {
     outline: 2px solid var(--ink); outline-offset: 2px;
@@ -272,6 +294,19 @@
     </div>
     <div class="ribbon" id="ribbon" aria-hidden="true"></div>
     <div id="habits"></div>
+    <div class="depthcard">
+      <div class="mtitle"><h3>Deep stretches</h3><span class="why" id="depthSum"></span></div>
+      <div id="stretchList"></div>
+      <div class="chips" id="depthChips">
+        <button type="button" class="chip" data-min="30">30m</button>
+        <button type="button" class="chip" data-min="45">45m</button>
+        <button type="button" class="chip" data-min="60">60m</button>
+        <button type="button" class="chip" data-min="90">90m</button>
+        <button type="button" class="chip" data-min="120">2h</button>
+        <input id="depthCustom" inputmode="numeric" placeholder="min" aria-label="Custom minutes">
+        <button type="button" class="chip" id="depthAdd">Add</button>
+      </div>
+    </div>
     <textarea id="note" placeholder="Note for the day (optional)"></textarea>
     <button class="commit" id="commitBtn">Commit day</button>
     <div class="status" id="status">&nbsp;</div>
@@ -325,8 +360,10 @@
   let date = today();        // 'YYYY-MM-DD'
   let marks = {};            // habitId -> status
   let note = '';
+  let stretches = [];        // current day's deep stretches: [{time, minutes}]
   let remoteRows = [];       // all parsed rows of habits.csv
   let noteRows = [];         // all parsed rows of notes.csv
+  let depthRows = [];        // all parsed rows of depth.csv (date, time, minutes)
   let shas = {};             // path -> sha
   let dirty = false;
 
@@ -409,13 +446,14 @@
   // ---------- data ----------
   async function loadAll() {
     setStatus('Loading…');
-    const [habitsJson, logCsv, notesCsv] = await Promise.all([
-      ghGet('data/habits.json'), ghGet('data/habits.csv'), ghGet('data/notes.csv')
+    const [habitsJson, logCsv, notesCsv, depthCsv] = await Promise.all([
+      ghGet('data/habits.json'), ghGet('data/habits.csv'), ghGet('data/notes.csv'), ghGet('data/depth.csv')
     ]);
     if (!habitsJson) throw new Error('data/habits.json not found in repo');
     habits = JSON.parse(habitsJson).habits.filter(h => h.active !== false);
     remoteRows = logCsv ? csvParse(logCsv).slice(1) : [];
     noteRows = notesCsv ? csvParse(notesCsv).slice(1) : [];
+    depthRows = depthCsv ? csvParse(depthCsv).slice(1).filter(r => r.length >= 3 && r[0]) : [];
     loadDay();
     setStatus(' ');
   }
@@ -423,16 +461,18 @@
     marks = {}; note = '';
     for (const r of remoteRows) if (r[0] === date) marks[r[1]] = r[2];
     for (const r of noteRows) if (r[0] === date) note = r[1];
+    stretches = depthRows.filter(r => r[0] === date).map(r => ({ time: r[1], minutes: Number(r[2]) }));
     const draft = localStorage.getItem(LS_DRAFT + date);
     if (draft) {
       const d = JSON.parse(draft);
       marks = d.marks; note = d.note;
+      if (d.stretches) stretches = d.stretches; // older drafts predate depth tracking
       dirty = true;
     } else dirty = false;
     render();
   }
   function saveDraft() {
-    localStorage.setItem(LS_DRAFT + date, JSON.stringify({ marks, note }));
+    localStorage.setItem(LS_DRAFT + date, JSON.stringify({ marks, note, stretches }));
     dirty = true;
   }
 
@@ -442,9 +482,12 @@
     setStatus('Saving…');
     try {
       // refresh shas/content to avoid clobbering concurrent edits
-      const [logCsv, notesCsv] = await Promise.all([ghGet('data/habits.csv'), ghGet('data/notes.csv')]);
+      const [logCsv, notesCsv, depthCsv] = await Promise.all([
+        ghGet('data/habits.csv'), ghGet('data/notes.csv'), ghGet('data/depth.csv')
+      ]);
       remoteRows = logCsv ? csvParse(logCsv).slice(1) : [];
       noteRows = notesCsv ? csvParse(notesCsv).slice(1) : [];
+      depthRows = depthCsv ? csvParse(depthCsv).slice(1).filter(r => r.length >= 3 && r[0]) : [];
 
       const keep = remoteRows.filter(r => r[0] !== date);
       for (const h of habits) if (marks[h.id]) keep.push([date, h.id, marks[h.id]]);
@@ -460,6 +503,16 @@
         keepNotes.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
         commit = await ghPut('data/notes.csv',
           csvSerialize([['date', 'note'], ...keepNotes]), `note: ${date}`);
+      }
+
+      const keepDepth = depthRows.filter(r => r[0] !== date);
+      const hadDepth = depthRows.length !== keepDepth.length;
+      for (const s of stretches) keepDepth.push([date, s.time, String(s.minutes)]);
+      if (stretches.length || hadDepth) {
+        keepDepth.sort((a, b) => (a[0] + a[1]).localeCompare(b[0] + b[1]));
+        commit = await ghPut('data/depth.csv',
+          csvSerialize([['date', 'time', 'minutes'], ...keepDepth]), `depth: ${date}`);
+        depthRows = keepDepth;
       }
       remoteRows = keep; noteRows = keepNotes;
       localStorage.removeItem(LS_DRAFT + date);
@@ -508,7 +561,44 @@
       });
       list.appendChild(row);
     }
+    renderStretches();
     if (dirty) setStatus('Unsaved changes');
+  }
+
+  // ---------- depth (deep stretches) ----------
+  function nowHM() {
+    const t = new Date();
+    return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
+  }
+  function renderStretches() {
+    const list = $('stretchList');
+    list.innerHTML = '';
+    stretches.forEach((s, i) => {
+      const row = document.createElement('div');
+      row.className = 'stretch-row';
+      row.innerHTML = '<span class="t"></span><span class="min"></span><button type="button" class="del" aria-label="Remove stretch">&#215;</button>';
+      row.querySelector('.t').textContent = s.time;
+      row.querySelector('.min').textContent = s.minutes + ' min';
+      row.querySelector('.del').addEventListener('click', () => {
+        stretches.splice(i, 1);
+        saveDraft(); render();
+      });
+      list.appendChild(row);
+    });
+    const sum = $('depthSum');
+    if (stretches.length) {
+      const longest = Math.max(...stretches.map(s => s.minutes));
+      const total = stretches.reduce((a, s) => a + s.minutes, 0);
+      sum.textContent = `longest ${longest} · total ${total} min`;
+    } else {
+      sum.textContent = 'tap when a stretch ends';
+    }
+  }
+  function addStretch(min) {
+    min = Math.round(Number(min));
+    if (!min || min < 1 || min > 600) return;
+    stretches.push({ time: nowHM(), minutes: min });
+    saveDraft(); render();
   }
 
   // ---------- progress ----------
@@ -516,6 +606,53 @@
     const [y, m, d] = iso.split('-').map(Number);
     return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
+  function renderDepthCard(body) {
+    // north-star first: longest unbroken stretch per day, last 14 days
+    const byDay = new Map();
+    for (const r of depthRows) {
+      const m = Number(r[2]);
+      if (m > (byDay.get(r[0]) || 0)) byDay.set(r[0], m);
+    }
+    const win = [];
+    for (let i = 13; i >= 0; i--) win.push(shiftDate(today(), -i));
+    const vals = win.map(d => byDay.get(d) || null);
+    const card = document.createElement('div');
+    card.className = 'phabit';
+    if (!byDay.size) {
+      card.innerHTML = '<div class="top"><span class="name"><b>Depth</b> — longest stretch</span><span class="meta">north star</span></div><p class="empty" style="margin:6px 0 2px;text-align:left;font-size:13px">No stretches logged yet — tap a chip on Today when one ends.</p>';
+      body.appendChild(card);
+      return;
+    }
+    const last7 = vals.slice(-7).filter(v => v != null);
+    const best = last7.length ? Math.max(...last7) : 0;
+    const med = last7.length ? median(last7) : 0;
+    const top = document.createElement('div');
+    top.className = 'top';
+    top.innerHTML = '<span class="name"><b>Depth</b> — longest stretch, min/day</span><span class="meta"></span>';
+    top.querySelector('.meta').textContent = last7.length
+      ? `7d best ${best} · median ${Math.round(med)}`
+      : 'no data this week';
+    const bars = document.createElement('div');
+    bars.className = 'depthbars';
+    const scale = Math.max(...vals.filter(v => v != null), 60);
+    win.forEach((d, i) => {
+      const bar = document.createElement('div');
+      const v = vals[i];
+      bar.className = 'bar' + (v == null ? ' none' : '');
+      if (v != null) bar.style.height = Math.max(6, Math.round(54 * v / scale)) + 'px';
+      bar.title = d + (v == null ? ' — no stretches' : ` — ${v} min`);
+      bars.appendChild(bar);
+    });
+    const cap = document.createElement('div');
+    cap.className = 'heatcap';
+    cap.style.margin = '6px 2px 0';
+    cap.innerHTML = '<span></span><span></span>';
+    cap.children[0].textContent = shortDate(win[0]);
+    cap.children[1].textContent = shortDate(win[13]);
+    card.append(top, bars, cap);
+    body.appendChild(card);
+  }
+
   function renderProgress() {
     const body = $('progressBody');
     body.innerHTML = '';
@@ -523,6 +660,7 @@
       body.innerHTML = `<p class="empty">${habits.length ? 'No days logged yet.' : 'Data not loaded — check connection in settings.'}</p>`;
       return;
     }
+    renderDepthCard(body);
     // index: habitId -> (date -> status), plus first logged date
     const idx = new Map();
     let first = today();
@@ -953,6 +1091,12 @@
   $('nextBtn').addEventListener('click', () => { if (date < today()) { date = shiftDate(date, 1); loadDay(); } });
   $('note').addEventListener('input', e => { note = e.target.value; saveDraft(); setStatus('Unsaved changes'); });
   $('commitBtn').addEventListener('click', commitDay);
+  document.querySelectorAll('#depthChips .chip[data-min]').forEach(b =>
+    b.addEventListener('click', () => addStretch(b.dataset.min)));
+  $('depthAdd').addEventListener('click', () => {
+    addStretch($('depthCustom').value);
+    $('depthCustom').value = '';
+  });
 
   cfg = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
   if (cfg) {
