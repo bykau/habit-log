@@ -962,7 +962,7 @@
       const s = cgm.summary, cov = cgm.coverage;
       parts.push(`<div class="mcard"><div class="mtitle"><h3>CGM baseline</h3><span class="why">${escHtml(cgm.sensor.brand || 'sensor')}</span></div>`
         + `<div class="sumline"><span class="kcal">${cgm.latest.mg_dl}</span><span class="unit">mg/dL latest</span><span class="sep">·</span><span class="unit"><b>${cov.readings}</b> readings</span></div>`
-        + `<div class="capline">First export: ${s.min_mg_dl}–${s.max_mg_dl} mg/dL · mean ${Math.round(s.mean_mg_dl)} · ${cov.minutes} min. ${escHtml(cgm.interpretation || '')}</div></div>`);
+        + `<div class="capline">Current export: ${s.min_mg_dl}–${s.max_mg_dl} mg/dL · mean ${Math.round(s.mean_mg_dl)} · ${Math.round(cov.minutes / 60 * 10) / 10} h${s.time_70_140_percent != null ? ` · ${s.time_70_140_percent}% in 70–140` : ''}. ${escHtml(cgm.interpretation || '')}</div></div>`);
     }
 
     if (log.length) {
