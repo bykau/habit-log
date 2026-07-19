@@ -931,7 +931,7 @@
     return `<svg viewBox="0 0 200 30" preserveAspectRatio="none" aria-hidden="true">${out}</svg>`;
   }
 
-  function renderMeals(nutri, mealMd) {
+  function renderMeals(nutri, mealMd, cgm) {
     const iso = today();
     const log = parseMealLog(mealMd, iso);
     const budgets = Object.assign({}, BUDGETS, (nutri && nutri.budgets) || {});
@@ -956,6 +956,13 @@
         + '</div>');
     } else {
       parts.push('<div class="mcard"><div class="mtitle"><h3>Watch markers</h3></div><p class="empty" style="margin:10px 0">No analysis for today yet — strips fill in after the next review pass.</p></div>');
+    }
+
+    if (cgm && cgm.sensor && cgm.latest && cgm.coverage && cgm.summary) {
+      const s = cgm.summary, cov = cgm.coverage;
+      parts.push(`<div class="mcard"><div class="mtitle"><h3>CGM baseline</h3><span class="why">${escHtml(cgm.sensor.brand || 'sensor')}</span></div>`
+        + `<div class="sumline"><span class="kcal">${cgm.latest.mg_dl}</span><span class="unit">mg/dL latest</span><span class="sep">·</span><span class="unit"><b>${cov.readings}</b> readings</span></div>`
+        + `<div class="capline">First export: ${s.min_mg_dl}–${s.max_mg_dl} mg/dL · mean ${Math.round(s.mean_mg_dl)} · ${cov.minutes} min. ${escHtml(cgm.interpretation || '')}</div></div>`);
     }
 
     if (log.length) {
@@ -999,10 +1006,11 @@
     $('mealsBody').innerHTML = parts.join('');
   }
 
-  function renderMealsSafe(nutriTxt, mealMd) {
-    let nutri = null;
+  function renderMealsSafe(nutriTxt, mealMd, cgmTxt) {
+    let nutri = null, cgm = null;
     try { nutri = nutriTxt ? JSON.parse(nutriTxt) : null; } catch (e) { /* malformed analysis file — render log only */ }
-    renderMeals(nutri, mealMd);
+    try { cgm = cgmTxt ? JSON.parse(cgmTxt) : null; } catch (e) { /* malformed CGM summary — omit card */ }
+    renderMeals(nutri, mealMd, cgm);
   }
   function mealsStatus(msg, withRetry) {
     const st = $('mealsStatus');
@@ -1020,14 +1028,15 @@
     if (!cfg) { $('mealsBody').innerHTML = '<p class="empty">Connect in settings first.</p>'; return; }
     if (!force && mealsAt && Date.now() - mealsAt < MEALS_TTL) return;
     mealsStatus('Loading…');
-    const [nutriTxt, mealMd] = await Promise.all([
+    const [nutriTxt, mealMd, cgmTxt] = await Promise.all([
       ghGet('data/nutrition-daily.json').catch(() => null),
-      ghGet('data/meal-log.md').catch(() => null)
+      ghGet('data/meal-log.md').catch(() => null),
+      ghGet('data/cgm-summary.json').catch(() => null)
     ]);
-    if (nutriTxt == null && mealMd == null) {
+    if (nutriTxt == null && mealMd == null && cgmTxt == null) {
       const cached = JSON.parse(localStorage.getItem(LS_MEALS) || 'null');
       if (cached) {
-        renderMealsSafe(cached.nutriTxt, cached.mealMd);
+        renderMealsSafe(cached.nutriTxt, cached.mealMd, cached.cgmTxt);
         mealsStatus('Offline — showing cached data.', true);
       } else {
         mealsStatus('Couldn’t load meal data.', true);
@@ -1035,8 +1044,8 @@
       return;
     }
     mealsAt = Date.now();
-    localStorage.setItem(LS_MEALS, JSON.stringify({ nutriTxt, mealMd, at: mealsAt }));
-    renderMealsSafe(nutriTxt, mealMd);
+    localStorage.setItem(LS_MEALS, JSON.stringify({ nutriTxt, mealMd, cgmTxt, at: mealsAt }));
+    renderMealsSafe(nutriTxt, mealMd, cgmTxt);
     mealsStatus('');
   }
 
